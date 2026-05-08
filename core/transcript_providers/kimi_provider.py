@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any, Dict
 
@@ -121,7 +122,12 @@ class KimiProvider(BaseTranscriptProvider):
     @staticmethod
     def _derive_files_url(api_url: str) -> str:
         # e.g. https://api.moonshot.cn/v1/chat/completions -> https://api.moonshot.cn/v1/files
-        base = api_url.rstrip("/").rsplit("/", 1)[0]
+        url = api_url.rstrip("/")
+        match = re.match(r"(.+?/v\d+)(?:/.*)?", url)
+        if match:
+            base = match.group(1)
+        else:
+            base = url.rsplit("/", 1)[0]
         return f"{base}/files"
 
     @staticmethod
