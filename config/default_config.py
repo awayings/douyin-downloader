@@ -43,6 +43,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "api_url": "https://api.openai.com/v1/audio/transcriptions",
         "api_key_env": "OPENAI_API_KEY",
         "api_key": "",
+        "prompt": "请将这段视频的语音内容转录成文字。",
     },
     "auto_cookie": False,
     "browser_fallback": {

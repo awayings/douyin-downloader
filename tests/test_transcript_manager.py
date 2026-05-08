@@ -97,3 +97,10 @@ def test_transcript_file_names(tmp_path):
     text_path, json_path = manager.build_output_paths(video_path)
     assert text_path.name == "demo.transcript.txt"
     assert json_path.name == "demo.transcript.json"
+
+
+def test_transcript_config_includes_prompt():
+    loader = ConfigLoader()
+    transcript_cfg = loader.get("transcript", {})
+    assert "prompt" in transcript_cfg
+    assert transcript_cfg["prompt"] == "请将这段视频的语音内容转录成文字。"
