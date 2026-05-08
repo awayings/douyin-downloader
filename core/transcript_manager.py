@@ -7,6 +7,7 @@ import aiofiles
 import aiohttp
 
 from config import ConfigLoader
+from core.transcript_providers.registry import resolve_provider
 from storage import Database, FileManager
 from utils.logger import setup_logger
 
@@ -116,10 +117,14 @@ class TranscriptManager:
             return {"status": "skipped", "reason": "missing_api_key"}
 
         try:
-            payload = await self._call_openai_transcription(
-                api_key=api_key,
+            provider = resolve_provider(self._api_url())
+            payload = await provider.transcribe(
                 video_path=video_path,
                 model=model,
+                api_key=api_key,
+                api_url=self._api_url(),
+                prompt=self._cfg().get("prompt", ""),
+                language_hint=str(self._cfg().get("language_hint", "")).strip(),
             )
             text = str(payload.get("text", "")).strip()
             await self._write_outputs(payload, text_path, json_path)
@@ -172,61 +177,6 @@ class TranscriptManager:
         if "json" in formats:
             async with aiofiles.open(json_path, "w", encoding="utf-8") as f:
                 await f.write(json.dumps(payload, ensure_ascii=False, indent=2))
-
-    async def _call_openai_transcription(
-        self, api_key: str, video_path: Path, model: str
-    ) -> Dict[str, Any]:
-        if not video_path.exists():
-            raise FileNotFoundError(f"Video file not found: {video_path}")
-
-        transcript_cfg = self._cfg()
-        language_hint = str(transcript_cfg.get("language_hint", "")).strip()
-        api_url = self._api_url()
-
-        form = aiohttp.FormData()
-        form.add_field("model", model)
-        form.add_field("response_format", "json")
-        if language_hint:
-            form.add_field("language", language_hint)
-
-        content_type = self._guess_video_content_type(video_path)
-        with video_path.open("rb") as f:
-            form.add_field(
-                "file",
-                f,
-                filename=video_path.name,
-                content_type=content_type,
-            )
-            timeout = aiohttp.ClientTimeout(total=600)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    api_url,
-                    data=form,
-                    headers={"Authorization": f"Bearer {api_key}"},
-                ) as response:
-                    if response.status != 200:
-                        body = await response.text()
-                        raise RuntimeError(
-                            f"OpenAI transcription failed: status={response.status}, body={body}"
-                        )
-
-                    payload = await response.json(content_type=None)
-                    if not isinstance(payload, dict):
-                        raise RuntimeError("OpenAI transcription returned invalid payload")
-                    return payload
-
-    @staticmethod
-    def _guess_video_content_type(video_path: Path) -> str:
-        suffix = video_path.suffix.lower()
-        if suffix == ".mp4":
-            return "video/mp4"
-        if suffix == ".m4a":
-            return "audio/mp4"
-        if suffix == ".wav":
-            return "audio/wav"
-        if suffix == ".mp3":
-            return "audio/mpeg"
-        return "application/octet-stream"
 
     async def _record_job(
         self,
