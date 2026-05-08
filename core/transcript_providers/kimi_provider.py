@@ -1,6 +1,7 @@
-import aiohttp
 from pathlib import Path
 from typing import Any, Dict
+
+import aiohttp
 
 from .base import BaseTranscriptProvider
 

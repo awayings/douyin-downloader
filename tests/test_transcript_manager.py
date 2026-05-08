@@ -1,7 +1,5 @@
 import asyncio
 
-import pytest
-
 from config import ConfigLoader
 from core.transcript_manager import TranscriptManager
 from storage import FileManager

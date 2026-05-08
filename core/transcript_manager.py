@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiofiles
-import aiohttp
 
 from config import ConfigLoader
 from core.transcript_providers.registry import resolve_provider
@@ -126,7 +125,6 @@ class TranscriptManager:
                 prompt=self._cfg().get("prompt", ""),
                 language_hint=str(self._cfg().get("language_hint", "")).strip(),
             )
-            text = str(payload.get("text", "")).strip()
             await self._write_outputs(payload, text_path, json_path)
             await self._record_job(
                 aweme_id=aweme_id,

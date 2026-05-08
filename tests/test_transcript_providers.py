@@ -1,7 +1,8 @@
-import pytest
-from core.transcript_providers.registry import resolve_provider
+from unittest.mock import AsyncMock, MagicMock
+
 from core.transcript_providers.kimi_provider import KimiProvider
 from core.transcript_providers.openai_provider import OpenAIProvider
+from core.transcript_providers.registry import resolve_provider
 
 
 def test_registry_detects_kimi():
@@ -17,10 +18,6 @@ def test_registry_detects_openai():
 def test_registry_defaults_to_openai():
     provider = resolve_provider("https://custom-proxy.example.com/v1/audio/transcriptions")
     assert isinstance(provider, OpenAIProvider)
-
-
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 
 def _mock_aiohttp_session(response_payload, status=200):
