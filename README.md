@@ -38,7 +38,7 @@ A practical Douyin downloader supporting videos, image-notes, collections, music
 | **REST API server mode** | `--serve --serve-port 8000` (optional `fastapi + uvicorn`) |
 | **Notification push** | Bark / Telegram / Webhook on download completion |
 | Extra assets | Cover, music, avatar, JSON metadata |
-| Video transcription | Optional, using OpenAI Transcriptions API |
+| Video transcription | Optional, using OpenAI Transcriptions API or Kimi (Moonshot) multimodal API |
 | Concurrent downloads | Configurable concurrency, default 5 |
 | Retry with backoff | Exponential backoff (1s, 2s, 5s) |
 | Rate limiting | Default 2 req/s |
@@ -148,6 +148,7 @@ transcript:
   api_url: https://api.openai.com/v1/audio/transcriptions
   api_key_env: OPENAI_API_KEY
   api_key: ""
+  prompt: "请将这段视频的语音内容转录成文字。"
 ```
 
 ## Usage
@@ -375,7 +376,12 @@ number:
 
 Current behavior applies to **video items only** (image-note items do not generate transcripts).
 
-### 1) Enable in config
+The transcript system supports two providers, selected automatically based on `api_url`:
+
+- **OpenAI** (default) — `api.openai.com` or any compatible endpoint
+- **Kimi (Moonshot)** — `api.moonshot.cn` or any endpoint containing `moonshot.cn`
+
+### 1) OpenAI Provider
 
 ```yaml
 transcript:
@@ -385,8 +391,10 @@ transcript:
   response_formats:
     - txt
     - json
+  api_url: https://api.openai.com/v1/audio/transcriptions
   api_key_env: OPENAI_API_KEY
   api_key: ""           # can be set directly, or via environment variable
+  prompt: ""
 ```
 
 Recommended to provide key through environment variable:
@@ -395,7 +403,36 @@ Recommended to provide key through environment variable:
 export OPENAI_API_KEY="sk-xxxx"
 ```
 
-### 2) Output files
+### 2) Kimi (Moonshot) Provider
+
+Kimi uses a multimodal flow: upload the video file first, then call the chat completions API with a `video_url` message.
+
+```yaml
+transcript:
+  enabled: true
+  model: moonshot-v1-8k
+  output_dir: ""
+  response_formats:
+    - txt
+    - json
+  api_url: https://api.moonshot.cn/v1/chat/completions
+  api_key_env: MOONSHOT_API_KEY
+  api_key: ""
+  prompt: "请将这段视频的语音内容转录成文字。"
+```
+
+Recommended to provide key through environment variable:
+
+```bash
+export MOONSHOT_API_KEY="sk-xxxx"
+```
+
+**Notes for Kimi:**
+- The `model` should be a Kimi model that supports video input (e.g. `moonshot-v1-8k`, check Moonshot docs for latest supported models).
+- The `prompt` is sent as the text portion of the multimodal message and guides the model on what to extract from the video.
+- The provider automatically derives the file upload endpoint (`{api_base}/v1/files`) from `api_url`.
+
+### 3) Output files
 
 When enabled, it generates:
 
@@ -540,8 +577,11 @@ Check in order:
 
 - whether `transcript.enabled` is `true`
 - whether downloaded items are videos (image-notes are not transcribed)
-- whether `OPENAI_API_KEY` (or `transcript.api_key`) is valid
+- whether the API key is valid (via `transcript.api_key_env` or `transcript.api_key`)
+  - For OpenAI: `OPENAI_API_KEY`
+  - For Kimi: `MOONSHOT_API_KEY` (or the env var you configured)
 - whether `response_formats` includes `txt` or `json`
+- whether `api_url` matches the provider you intend (contains `moonshot.cn` for Kimi, otherwise OpenAI)
 
 ### 5) How to view download history?
 
